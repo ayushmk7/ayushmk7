@@ -5,4 +5,5 @@ I love working with AI and cloud infrastructure and am very excited in cybersecu
 Always love chatting about new tech and oppurtunities! 
 Would love to collaborate on project I'm interested in. 
 Actively looking for oppurtunities in tech
+
 Visit my website! Have a look around

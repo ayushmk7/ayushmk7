@@ -6,4 +6,4 @@ Always love chatting about new tech and oppurtunities!
 Would love to collaborate on project I'm interested in. 
 Actively looking for oppurtunities in tech
 
-Visit my website! Have a look around
+Visit my website ayushmadhav.com ! Have a look around

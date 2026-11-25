@@ -7,6 +7,7 @@ from ascii_art import avatar_ascii
 from stats import fetch_stats
 
 FS, CW, LH, PAD = 14, 8.4, 19, 28  # font size, char width, line height, padding (px)
+AFS = 8  # art font size in the SVG (smaller = more detail)
 GAP = 4  # chars between art and panel
 
 
@@ -42,22 +43,33 @@ def panel(cfg, live):
     return lines
 
 
-def compose(cfg, art, pan):
-    while art and not art[0].strip(): art = art[1:]
-    while art and not art[-1].strip(): art = art[:-1]
-    aw = len(art[0]) if art else 0
-    n = max(len(art), len(pan))
-    art = [" " * aw] * ((n - len(art)) // 2) + art
+def runs(row, mono=None):
+    """[(char, hex)] -> merged [(text, hex)] segments; spaces join any run."""
+    out = []
+    for ch, col in row:
+        col = mono or col
+        if out and (ch == " " or out[-1][1] == col):
+            out[-1] = (out[-1][0] + ch, out[-1][1])
+        else:
+            out.append((ch, col))
+    return out
+
+
+def compose(cfg, left, aw, pan, rows=0):
+    n = max(len(left), len(pan), rows)
+    left = [[]] * ((n - len(left)) // 2) + left
     pan = [[]] * ((n - len(pan)) // 2) + pan
     body = []
     for i in range(n):
-        a = art[i] if i < len(art) else " " * aw
-        body.append([(a + " " * GAP, "art")] + (pan[i] if i < len(pan) else []))
+        l = left[i] if i < len(left) else []
+        pad = aw + GAP - sum(len(t) for t, _ in l)
+        body.append(l + [(" " * pad, "dim")] + (pan[i] if i < len(pan) else []))
     prompt = [(f"{cfg['user']}@{cfg['host']}", "key b"), (":~$ ", "value")]
     return [prompt + [(cfg["command"], "value cmd")], []] + body + [[], prompt + [("█", "cursor")]]
 
 
-def svg(cfg, lines):
+def svg(cfg, lines, art, art_top):
+    fill = lambda k: f'fill="{k}"' if k.startswith("#") else f'class="{k}"'
     c = cfg["colors"]
     cols = max(sum(len(t) for t, _ in l) for l in lines)
     W, H = PAD * 2 + cols * CW, PAD * 2 + len(lines) * LH
@@ -79,16 +91,21 @@ text{{white-space:pre;font:{FS}px ui-monospace,SFMono-Regular,Menlo,Consolas,'Li
             continue
         n = sum(len(t) for t, _ in l)
         y = PAD + (i + 0.8) * LH
-        spans = "".join(f'<tspan class="{k}">{escape(t).replace(' ', '&#160;')}</tspan>' for t, k in l)
+        spans = "".join(f'<tspan {fill(k)}>{escape(t).replace(' ', '&#160;')}</tspan>' for t, k in l)
         attrs = ' clip-path="url(#type)"' if i == 0 else f' class="l" style="animation-delay:{1.1 + i * 0.04:.2f}s"'
         out.append(f'<text x="{PAD}" y="{y:.1f}" textLength="{n * CW:.1f}" lengthAdjust="spacingAndGlyphs"{attrs}>{spans}</text>')
+    ah = AFS * 1.15
+    rows = "".join(f'<text x="{PAD}" y="{art_top + (j + 0.8) * ah:.1f}" font-size="{AFS}" textLength="{len(r) * AFS * 0.6:.1f}" '
+                   f'lengthAdjust="spacingAndGlyphs">' + "".join(f'<tspan {fill(k)}>{escape(t).replace(" ", "&#160;")}</tspan>' for t, k in runs(r)) + "</text>"
+                   for j, r in enumerate(art))
+    out.append(f'<g class="l" style="animation-delay:1s">{rows}</g>')
     return "\n".join(out + ["</svg>"])
 
 
 def ansi(cfg, lines):
     rgb = lambda h: ";".join(str(int(h[i:i + 2], 16)) for i in (1, 3, 5))
     c = cfg["colors"]
-    code = lambda k: "\x1b[0;" + ("1;" if " b" in k else "") + "38;2;" + rgb(c[k.split()[0] if k != "cursor" else "key"]) + "m"
+    code = lambda k: "\x1b[0;" + ("1;" if " b" in k else "") + "38;2;" + rgb(k if k[0] == "#" else c[k.split()[0] if k != "cursor" else "key"]) + "m"
     return "\n".join("".join(code(k) + t for t, k in l) + "\x1b[0m" for l in lines) + "\n"
 
 
@@ -99,11 +116,24 @@ def main():
     s = fetch_stats(cfg["user"], token)
     live = {k: f"{v:,}" if isinstance(v, int) else v for k, v in s.items()}
     live |= {"uptime": uptime(s["created_at"]), "languages": ", ".join(s["top_languages"])}
-    art = avatar_ascii(cfg["avatar_url"] or f"https://github.com/{cfg['user']}.png", cfg["art_width"], cfg["art_height"])
-    lines = compose(cfg, art, panel(cfg, live))
-    open("neofetch.svg", "w").write(svg(cfg, lines))
-    open("neofetch.txt", "w").write(ansi(cfg, lines))
-
+    url = cfg["avatar_url"] or f"https://github.com/{cfg['user']}.png"
+    mono = None if cfg.get("art_photo_colors", True) else cfg["colors"]["art"]
+    pan = panel(cfg, live)
+    # SVG: hi-res art in its own small-font block, panel laid out beside it
+    w = cfg["art_width"]
+    art = avatar_ascii(url, w, round(w * 0.6 / 1.15), cfg.get("keep_background", False))
+    if mono: art = [[(ch, mono) for ch, _ in r] for r in art]
+    aw, ah = -(-w * AFS * 0.6 // CW), len(art) * AFS * 1.15
+    rows = -(-ah // LH)
+    lines = compose(cfg, [], int(aw), pan, int(rows))
+    art_top = PAD + 2 * LH + (len(lines) - 4 - rows) // 2 * LH + (rows * LH - ah) / 2
+    open("neofetch.svg", "w").write(svg(cfg, lines, art, art_top))
+    # terminal: ~2:1 cells, so half as many rows
+    tw = cfg["term_art_width"]
+    tart = [runs(r, mono) for r in avatar_ascii(url, tw, tw // 2, cfg.get("keep_background", False))]
+    while tart and not "".join(t for t, _ in tart[0]).strip(): tart.pop(0)
+    while tart and not "".join(t for t, _ in tart[-1]).strip(): tart.pop()
+    open("neofetch.txt", "w").write(ansi(cfg, compose(cfg, tart, tw, pan)))
 
 if __name__ == "__main__":
     main()

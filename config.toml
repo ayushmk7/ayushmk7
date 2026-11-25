@@ -7,8 +7,10 @@ user = "ayushmk7"
 host = "github"
 command = "neofetch"
 avatar_url = ""        # empty = your current GitHub avatar (auto-updates when you change pfp)
-art_width = 44         # ASCII avatar size in characters
-art_height = 22
+art_width = 64         # ASCII avatar width in the README card (more = more detail)
+term_art_width = 44    # ASCII avatar width for the terminal version (cat/curl)
+art_photo_colors = true  # color each character from your pfp; false = single [colors].art color
+keep_background = false  # true for photo pfps with busy backgrounds
 panel_width = 52       # right-side panel width in characters
 
 [colors]               # hex colors used in the SVG (terminal uses nearest ANSI)

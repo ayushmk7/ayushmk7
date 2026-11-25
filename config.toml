@@ -1,0 +1,49 @@
+# Edit this file to change the card. Push → GitHub Action re-renders neofetch.svg + neofetch.txt.
+# Values can use live placeholders:
+#   {uptime} {languages} {repos} {stars} {followers} {following}
+#   {contributions} {active_days} {streak} {best_streak}
+
+user = "ayushmk7"
+host = "github"
+command = "neofetch"
+avatar_url = ""        # empty = your current GitHub avatar (auto-updates when you change pfp)
+art_width = 44         # ASCII avatar size in characters
+art_height = 22
+panel_width = 52       # right-side panel width in characters
+
+[colors]               # hex colors used in the SVG (terminal uses nearest ANSI)
+bg = "#0d1117"
+border = "#58a6ff"
+key = "#58a6ff"
+value = "#e6edf3"
+dim = "#6e7681"
+art = "#7ee787"
+
+# Sections render top-to-bottom. First section has no title (header is user@host).
+# columns = 2 puts rows side by side, like the stats block.
+[[sections]]
+rows = [
+  ["Name", "Ayush Madhav Kumar"],
+  ["Role", "Frontend or full-stack engineer"],
+  ["Host", "University of Michigan"],
+  ["Location", "Michigan, US"],
+  ["Uptime", "{uptime} on GitHub"],
+  ["Languages", "{languages}"],
+]
+
+[[sections]]
+title = "Contact"
+rows = [
+  ["GitHub", "github.com/ayushmk7"],
+  ["Website", "ayushmadhav.com"],
+]
+
+[[sections]]
+title = "GitHub Stats"
+columns = 2
+rows = [
+  ["Repos", "{repos}"],                 ["Stars", "{stars}"],
+  ["Followers", "{followers}"],         ["Following", "{following}"],
+  ["Contributions", "{contributions}"], ["Active days", "{active_days}"],
+  ["Streak", "{streak}d"],              ["Best streak", "{best_streak}d"],
+]
